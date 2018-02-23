@@ -20,7 +20,7 @@ struct table
 };
 
 
-//Self made functions
+//Self made help functions functions
 
 //finds key in table
 //param [in]: key - the key that is checked with table
@@ -43,7 +43,7 @@ int find_key(KEY key, table *t) {
 //creates a new pair
 //param [in]: key - key of the new pair
 //param [in]: value - the value of the pair
-//return: pointer to where oair is allocated in heap
+//return: pointer to where pair is allocated
 pair *pair_create(KEY key, VALUE value) {
 
 	pair *p = malloc(sizeof(pair));
@@ -57,7 +57,7 @@ pair *pair_create(KEY key, VALUE value) {
 //Frees a pairs val and key
 //param [in]: t - table where adress of pair is located
 //param [in]: pos - position of adress in table's array
-void pair_free(table *t, int pos) {
+void pair_kill(table *t, int pos) {
 
 	free(t -> pairs[pos] -> val);
 	free(t -> pairs[pos] -> key);
@@ -67,6 +67,12 @@ void pair_free(table *t, int pos) {
 
 //Already created functions
 
+
+//Creates an empty table
+//param [in]: capacity - number of pairs the table can fit
+//param [in]: cmp - function pointer to compare different keys
+//param [in]: hash - function pointer to hash a key
+//return: empty table
 table *table_empty(int capacity, key_compare_func cmp, key_hash_func hash)
 {
     table *t = malloc(sizeof(table));
@@ -80,18 +86,25 @@ table *table_empty(int capacity, key_compare_func cmp, key_hash_func hash)
 }
 
 
+//Examines if table is empty
+//param [in]: t - table to be examined
+//return: bool - true if table is empty, else bool - false
 bool table_is_empty(table *t)
 {
     return t -> current_size == 0;
 }
 
 
+//Inserts a new pair into table
+//param [in]: t - table to insert value into
+//param [in]: key - key of new pair
+//param [in]: value - value of new pair
 void table_insert(table *t, KEY key, VALUE val)
 {
 	int pos = find_key(key, t);
 	if (pos >= 0) {
 
-		pair_free(t, pos);
+		pair_kill(t, pos);
 		t -> pairs[pos] = pair_create(key, val);
 
 	} else if (t -> current_size < t -> capacity) {
@@ -102,6 +115,10 @@ void table_insert(table *t, KEY key, VALUE val)
 }
 
 
+//Looks up value of a pair in table
+//param [in]: t - table to be examined
+//param [in]: key - key of the pair
+//return: if pair found value of pair, else NULL
 VALUE table_lookup(table *t, KEY key)
 {
 	for (int i = 0; i < t -> current_size; i++) {
@@ -115,13 +132,16 @@ VALUE table_lookup(table *t, KEY key)
 }
 
 
+//Removes a pair from a table
+//param [in]: t - table to remove from
+//param [in]: key - key of the pair that is to be removed
 void table_remove(table *t, KEY key)
 {
 	int pos = find_key(key, t);
 
 	if (pos >= 0) {
 
-		pair_free(t, pos);
+		pair_kill(t, pos);
 
 		t -> pairs[pos] = t -> pairs[t -> current_size - 1];
 		t -> current_size--;;
@@ -129,11 +149,13 @@ void table_remove(table *t, KEY key)
 }
 
 
+//Frees the allocated memory of an entire table
+//param [in]: t - table that is to be free'd
 void table_kill(table *t)
 {
     for (int i = 0; i < t -> current_size; i++) {
 
-		pair_free(t, i);
+		pair_kill(t, i);
 	}
 	free(t -> pairs);
     free(t);

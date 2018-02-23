@@ -18,13 +18,12 @@ struct table
 	int size;
 	int capacity;
 	struct pair **buckets;
-	struct pair *pos;
 	key_compare_func key_cmp;
 	key_hash_func hash_key;
 };
 
 
-//Self made functions
+//Self made help functions functions
 
 
 //Finds position of pair
@@ -32,49 +31,40 @@ struct table
 //return: pointer to location of pair, NULL of pair does not exist
 pair *pair_find(table *t, KEY key) {
 
-	printf("pair_find - ");
-	int hash = t -> hash_key(key);
-	int i = hash % t -> capacity;
+	int i = t -> hash_key(key) % t -> capacity;
 	pair *p = t -> buckets[i];
 
-	if (p != NULL) {
-		while (p != NULL && !t -> key_cmp(p -> key, key)) {
-			p = p -> next;
-		}
-	}
+	while (p  -> next != NULL) {
 
-	printf("function ends, returning adress %x\n", p);
+		if (t -> key_cmp(p -> next -> key, key)) {
+
+			return p;
+		}
+		p = p -> next;
+	}
 	return p;
 }
 
 
-//Frees next pair, relinks pair to thrid one
+//Frees pair
 //param [in]: p - pointer to pair
 void pair_kill(pair *p) {
-
-	if (p -> next != NULL) {
-
-		pair* tmp = p -> next -> next;
-		free(p -> next -> val);
-		free(p -> next -> key);
-		free(p -> next);
-		p -> next = tmp;
-	}
+	free(p -> val);
+	free(p -> key);
+	free(p);
 }
 
 
-//Inserts a pair into list of pair springing out from bucket
-//param [in]:
-//param [in]:
-//return:
-pair *pair_create(pair* p, KEY key, VALUE val) {
+//Allocates a memory for a pair and gives it key and value
+//param [in]: key - key of the pair
+//param [in]: val - value of the pair
+//return: pointer to where pair is allocated
+pair *pair_create(KEY key, VALUE val) {
 
-	printf("pair_create - ");
-	p = malloc(sizeof(pair));
+	pair *p = malloc(sizeof(pair));
 	p -> key = key;
 	p -> val = val;
 	p -> next = NULL;
-	printf("end of function \n");
 	return p;
 }
 
@@ -82,79 +72,111 @@ pair *pair_create(pair* p, KEY key, VALUE val) {
 //Already created functions
 
 
+//Creates an empty table
+//param [in]: capacity - number of buckets the table can fit
+//param [in]: cmp - function pointer to compare different keys
+//param [in]: hash - function pointer to hash a key
+//return: empty table
 table *table_empty(int capacity, key_compare_func cmp, key_hash_func hash)
 {
-        table *t = malloc(sizeof(table));
+    table *t = malloc(sizeof(table));
 	t -> buckets = malloc(capacity * sizeof(pair*));
 	for (int i = 0; i < capacity; i++) {
-		t -> buckets[i] = NULL;
+		t -> buckets[i] = malloc(sizeof(pair));
+		t -> buckets[i] -> next = NULL;
 	}
 	t -> size = 0;
 	t -> capacity = capacity;
 	t -> key_cmp = cmp;
 	t -> hash_key = hash;
 
-        return t;
+    return t;
 }
 
 
+//Examines if table is empty
+//param [in]: t - table to be examined
+//return: bool - true if table is empty, else bool - false
 bool table_is_empty(table *t)
 {
-        return t -> size == 0;
+    return t -> size == 0;
 }
 
 
+//Inserts a new pair into table
+//param [in]: t - table to insert value into
+//param [in]: key - key of new pair
+//param [in]: value - value of new pair
 void table_insert(table *t, KEY key, VALUE val)
 {
-	printf("\n\n table_insert\n");
-	t -> pos = pair_find(t, key);
-	if (t -> pos == NULL) {
+	pair *p = pair_find(t, key);
+	if (p -> next == NULL) {
 
-		int hash = t -> hash_key(key) % t -> capacity;
-		t -> buckets[hash] = pair_create(t -> pos, key, val);
+		p -> next = pair_create(key, val);
 		t -> size++;
-
 	} else {
 
-		free(t -> pos -> key);
-		free(t -> pos -> val);
-		t -> pos -> key = key;
-		t -> pos -> val = val;
+		free(p -> next -> key);
+		free(p -> next -> val);
+		p -> next -> key = key;
+		p -> next -> val = val;
 	}
 }
 
 
+//Looks up value of a pair in table
+//param [in]: t - table to be examined
+//param [in]: key - key of the pair
+//return: if pair found value of pair, else NULL
 VALUE table_lookup(table *t, KEY key)
 {
-	printf("table_lookup\n");
-	pair *p = NULL;
+	pair *p = pair_find(t, key);
 
-        for (int i = 0; i < t -> capacity; i++) {
+	if (p -> next != NULL) {
 
-		if (t -> buckets[i] != NULL) {
-			printf("woooo\n");
-			printf("bucket key: %d\n", t -> buckets[i] -> key);
+		if (t -> key_cmp(p -> next -> key, key)) {
 
-			p = pair_find(t, key);
-			if (p != NULL) {
-				printf("val: %s\n", p -> val);
-				return p -> val;
-			}
+			return p -> next -> val;
 		}
 	}
-
-        return NULL;
+	return NULL;
 }
 
 
+//Removes a pair from a table
+//param [in]: t - table to remove from
+//param [in]: key - key of the pair that is to be removed
 void table_remove(table *t, KEY key)
 {
-        // TODO
+    pair *p = pair_find(t, key);
+
+	if (p -> next != NULL) {
+
+		pair *tmp = p -> next -> next;
+		pair_kill(p -> next);
+		p -> next = tmp;
+
+		t -> size = t -> size - 1;
+	}
 }
 
 
+//Frees the allocated memory of an entire table
+//param [in]: t - table that is to be free'd
 void table_kill(table *t)
 {
-        // TODO
-        free(t);
+    for (int i = 0; i < t -> capacity; i++) {
+
+		pair *p = t -> buckets[i];
+		while(p -> next != NULL) {
+
+			pair *tmp = p -> next -> next;
+			pair_kill(p -> next);
+			p -> next = tmp;
+		}
+		free(p);
+	}
+
+	free(t -> buckets);
+    free(t);
 }
